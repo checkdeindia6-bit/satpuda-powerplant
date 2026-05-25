@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Satpura Thermal Power Station – MPPGCL, Sarni</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#0a0f1a; font-family:'Segoe UI', sans-serif; overflow:hidden; }
+    #canvas-container { width:100vw; height:100vh; position:relative; }
+    canvas { display:block; }
+
+    /* HUD overlay */
+    #hud {
+      position:absolute; top:0; left:0; width:100%; pointer-events:none;
+      display:flex; flex-direction:column; gap:0;
+    }
+    #header {
+      background:linear-gradient(135deg,rgba(10,20,50,0.95),rgba(20,40,80,0.9));
+      border-bottom:2px solid #e87c1e;
+      padding:12px 20px; display:flex; align-items:center; gap:16px;
+      pointer-events:all;
+    }
+    .logo-badge {
+      background:#e87c1e; color:#fff; font-weight:900; font-size:11px;
+      padding:4px 8px; border-radius:4px; letter-spacing:1px;
+    }
+    #header h1 { color:#fff; font-size:16px; font-weight:700; letter-spacing:.5px; }
+    #header p  { color:#aac; font-size:11px; margin-top:2px; }
+    .capacity-badge {
+      margin-left:auto; background:rgba(232,124,30,0.15); border:1px solid #e87c1e;
+      color:#e87c1e; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:700;
+    }
+
+    /* Info panel */
+    #info-panel {
+      position:absolute; bottom:20px; left:20px;
+      background:rgba(10,20,50,0.92); border:1px solid rgba(100,150,255,0.3);
+      border-radius:10px; padding:14px 18px; width:260px;
+      pointer-events:all;
+    }
+    #info-panel h3 { color:#e87c1e; font-size:13px; margin-bottom:10px; letter-spacing:.5px; text-transform:uppercase; }
+    .info-row { display:flex; justify-content:space-between; margin-bottom:6px; }
+    .info-label { color:#889; font-size:11px; }
+    .info-value { color:#cde; font-size:11px; font-weight:600; }
+    .unit-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; margin-top:10px; }
+    .unit-pill {
+      background:rgba(0,200,100,0.15); border:1px solid rgba(0,200,100,0.4);
+      color:#0f8; border-radius:4px; padding:3px 6px; font-size:10px; text-align:center;
+    }
+    .unit-pill.inactive {
+      background:rgba(255,100,50,0.1); border-color:rgba(255,100,50,0.3); color:#f84;
+    }
+
+    /* Controls panel */
+    #controls {
+      position:absolute; bottom:20px; right:20px;
+      background:rgba(10,20,50,0.92); border:1px solid rgba(100,150,255,0.3);
+      border-radius:10px; padding:14px 18px; pointer-events:all;
+    }
+    #controls h3 { color:#e87c1e; font-size:12px; margin-bottom:8px; letter-spacing:.5px; text-transform:uppercase; }
+    .ctrl-row { color:#aac; font-size:11px; margin-bottom:4px; }
+    .kbd { background:rgba(255,255,255,0.1); border-radius:3px; padding:1px 5px; font-family:monospace; color:#cde; font-size:10px; }
+
+    /* Legend */
+    #legend {
+      position:absolute; top:80px; right:20px;
+      background:rgba(10,20,50,0.92); border:1px solid rgba(100,150,255,0.3);
+      border-radius:10px; padding:12px 16px; pointer-events:all;
+    }
+    #legend h3 { color:#e87c1e; font-size:12px; margin-bottom:8px; letter-spacing:.5px; text-transform:uppercase; }
+    .legend-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+    .legend-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+    .legend-text { color:#aac; font-size:10px; }
+
+    /* Hover tooltip */
+    #tooltip {
+      position:absolute; display:none; pointer-events:none;
+      background:rgba(10,20,50,0.95); border:1px solid #e87c1e;
+      border-radius:8px; padding:8px 12px; color:#fff; font-size:12px;
+      max-width:200px; line-height:1.5;
+    }
+    #tooltip .tt-title { color:#e87c1e; font-weight:700; margin-bottom:4px; }
+  </style>
+</head>
+<body>
+<div id="canvas-container">
+  <div id="hud">
+    <div id="header">
+      <div class="logo-badge">MPPGCL</div>
+      <div>
+        <h1>Satpura Thermal Power Station</h1>
+        <p>Sarni, Betul District, Madhya Pradesh &nbsp;|&nbsp; Est. 1967 &nbsp;|&nbsp; Coal-Fired</p>
+      </div>
+      <div class="capacity-badge">1330 MW</div>
+    </div>
+  </div>
+
+  <div id="info-panel">
+    <h3>Plant Overview</h3>
+    <div class="info-row"><span class="info-label">Operator</span><span class="info-value">MPPGCL</span></div>
+    <div class="info-row"><span class="info-label">Location</span><span class="info-value">Sarni, Betul, MP</span></div>
+    <div class="info-row"><span class="info-label">Fuel</span><span class="info-value">Coal (Western Coalfields)</span></div>
+    <div class="info-row"><span class="info-label">Water Source</span><span class="info-value">Satpura Dam Reservoir</span></div>
+    <div class="info-row"><span class="info-label">Commissioned</span><span class="info-value">October 1967</span></div>
+    <div class="info-row"><span class="info-label">Capacity</span><span class="info-value">1330 MW</span></div>
+    <div style="margin-top:10px;border-top:1px solid rgba(100,150,255,0.2);padding-top:10px;">
+      <div style="color:#889;font-size:10px;margin-bottom:6px;">GENERATING UNITS (Active / Total)</div>
+      <div class="unit-grid">
+        <div class="unit-pill">U-8 210MW</div>
+        <div class="unit-pill">U-9 210MW</div>
+        <div class="unit-pill">U-10 210MW</div>
+        <div class="unit-pill">U-11 210MW</div>
+        <div class="unit-pill">U-12 250MW</div>
+        <div class="unit-pill">U-13 250MW</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="legend">
+    <h3>Legend</h3>
+    <div class="legend-row"><div class="legend-dot" style="background:#cc4400"></div><span class="legend-text">Boiler House</span></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#3366cc"></div><span class="legend-text">Turbine Hall (TG)</span></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#888"></div><span class="legend-text">Cooling Towers</span></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#cc4"></div><span class="legend-text">Chimney / Flue Stack</span></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#226633"></div><span class="legend-text">Coal Handling Plant</span></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#334"></div><span class="legend-text">Switchyard / Control</span></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#2266aa"></div><span class="legend-text">Water Treatment / Pond</span></div>
+    <div class="legend-row"><div class="legend-dot" style="background:#553311"></div><span class="legend-text">Ash Handling Area</span></div>
+  </div>
+
+  <div id="controls">
+    <h3>Controls</h3>
+    <div class="ctrl-row"><span class="kbd">Drag</span> Rotate view</div>
+    <div class="ctrl-row"><span class="kbd">Scroll</span> Zoom in/out</div>
+    <div class="ctrl-row"><span class="kbd">Right-drag</span> Pan</div>
+    <div class="ctrl-row"><span class="kbd">Hover</span> Component info</div>
+    <div class="ctrl-row"><span class="kbd">R</span> Reset camera</div>
+  </div>
+
+  <div id="tooltip">
+    <div class="tt-title" id="tt-title">-</div>
+    <div id="tt-body">-</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─── Scene Setup ────────────────────────────────────────────────────
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1526);
+scene.fog = new THREE.FogExp2(0x0d1526, 0.012);
+
+const W = container.clientWidth, H = container.clientHeight;
+const camera = new THREE.PerspectiveCamera(55, W/H, 0.1, 1000);
+camera.position.set(80, 60, 90);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+// ─── Lights ─────────────────────────────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0x2233aa, 0.6);
+scene.add(ambientLight);
+const sunLight = new THREE.DirectionalLight(0xffd5a0, 2.2);
+sunLight.position.set(80, 120, 60);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048,2048);
+sunLight.shadow.camera.near = 1;
+sunLight.shadow.camera.far = 400;
+sunLight.shadow.camera.left = -100;
+sunLight.shadow.camera.right = 100;
+sunLight.shadow.camera.top = 100;
+sunLight.shadow.camera.bottom = -100;
+scene.add(sunLight);
+const fillLight = new THREE.DirectionalLight(0x4466aa, 0.5);
+fillLight.position.set(-60, 40, -60);
+scene.add(fillLight);
+const rimLight = new THREE.DirectionalLight(0xe87c1e, 0.3);
+rimLight.position.set(0, -20, 80);
+scene.add(rimLight);
+
+// ─── Materials ───────────────────────────────────────────────────────
+function mat(color, rough=0.7, metal=0.1, opacity=1) {
+  return new THREE.MeshStandardMaterial({
+    color, roughness:rough, metalness:metal,
+    transparent: opacity<1, opacity
+  });
+}
+const M = {
+  boiler:     mat(0xb83300, 0.8, 0.3),
+  tg:         mat(0x1a3a88, 0.7, 0.4),
+  cooling:    mat(0x999999, 0.9, 0.1),
+  chimney:    mat(0xbbaa33, 0.85, 0.1),
+  coal:       mat(0x2a5a2a, 0.9, 0.05),
+  switchyard: mat(0x223355, 0.7, 0.5),
+  water:      mat(0x1155aa, 0.3, 0.1, 0.85),
+  ash:        mat(0x5a3311, 0.95, 0.05),
+  ground:     mat(0x1a2a10, 0.95, 0.0),
+  road:       mat(0x222222, 0.95, 0.0),
+  concrete:   mat(0x888888, 0.9, 0.1),
+  window:     mat(0x88aacc, 0.2, 0.5, 0.6),
+  pipe:       mat(0x555566, 0.6, 0.8),
+  transformer:mat(0x334455, 0.6, 0.6),
+  fence:      mat(0x446688, 0.7, 0.6),
+  water2:     mat(0x1188cc, 0.1, 0.0, 0.7),
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+const interactives = [];
+function box(w,h,d, material, x,y,z, name='', info='') {
+  const geo = new THREE.BoxGeometry(w,h,d);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.set(x,y+h/2,z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  if(name) { mesh.userData = {name, info}; interactives.push(mesh); }
+  return mesh;
+}
+function cyl(rt, rb, h, segs, material, x,y,z, name='', info='') {
+  const geo = new THREE.CylinderGeometry(rt,rb,h,segs);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.position.set(x,y+h/2,z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  if(name) { mesh.userData = {name, info}; interactives.push(mesh); }
+  return mesh;
+}
+
+// ─── Ground ──────────────────────────────────────────────────────────
+const groundGeo = new THREE.PlaneGeometry(400, 400, 40, 40);
+const groundMesh = new THREE.Mesh(groundGeo, M.ground);
+groundMesh.rotation.x = -Math.PI/2;
+groundMesh.receiveShadow = true;
+scene.add(groundMesh);
+
+// Grid helper
+const grid = new THREE.GridHelper(400, 80, 0x223344, 0x1a2233);
+grid.position.y = 0.05;
+scene.add(grid);
+
+// ─── Plant Layout ─────────────────────────────────────────────────────
+// MAIN BUILDINGS (roughly to scale, simplified)
+
+// === BOILER HOUSE (6 units: 4×210MW + 2×250MW) ===
+// 4 × 210 MW boilers  (west side)
+for(let i=0;i<4;i++) {
+  box(10,26,10, M.boiler, -28+i*11, 0, -18,
+    `Boiler – Unit ${i+8} (210 MW)`,
+    `Sub-critical boiler, 210 MW unit.<br>Coal-fired drum type boiler.<br>Steam temp ~540°C, pressure ~138 kg/cm²`);
+}
+// 2 × 250 MW boilers (taller, east of the 210s)
+for(let i=0;i<2;i++) {
+  box(11,32,11, M.boiler, 20+i*13, 0, -18,
+    `Boiler – Unit ${i+12} (250 MW)`,
+    `Super-critical boiler, 250 MW unit.<br>Higher efficiency unit commissioned 2014.<br>Steam temp ~565°C`);
+}
+
+// === TURBINE-GENERATOR HALL ===
+box(80, 12, 18, M.tg, -3, 0, 5,
+  'Turbine Generator Hall',
+  '6 TG sets (4×210 MW + 2×250 MW).<br>Steam turbines driving synchronous generators.<br>Total capacity: 1330 MW');
+// Windows on TG hall
+for(let i=-35;i<36;i+=8) {
+  box(5, 4, 0.3, M.window, i, 5, 14.1);
+  box(5, 4, 0.3, M.window, i, 5, -4.1);
+}
+
+// === COOLING TOWERS ===
+// Natural draft cooling towers – hyperbolic shape approximated
+const ctPositions = [
+  [-40,-28],[-27,-28],[-14,-28],[-1,-28],[12,-28],[25,-28]
+];
+ctPositions.forEach(([cx,cz], i) => {
+  cyl(3.5, 5, 22, 20, M.cooling, cx, 0, cz,
+    `Cooling Tower CT-${i+1}`,
+    `Natural draft hyperbolic cooling tower.<br>Removes waste heat from condenser water.<br>Height ~120m (model scaled).`);
+  // inner basin
+  cyl(4.2,4.2,1,20, mat(0x2266aa,0.3,0.0,0.7), cx,0,cz);
+});
+
+// === CHIMNEYS / FLUE GAS STACKS ===
+const chPos = [[-28,0],[-17,0],[-6,0],[5,0],[20,0],[33,0]];
+chPos.forEach(([cx,cz], i) => {
+  cyl(1.2,1.6,55,12, M.chimney, cx, 0, cz,
+    `Chimney Stack – Unit ${i+8}`,
+    `Flue gas chimney for unit ${i+8}.<br>Height: ~200m (model scaled).<br>Carries SO₂, particulates to ESP filters.`);
+  // red/white bands
+  for(let b=0;b<4;b++) {
+    const bandMat = b%2===0 ? mat(0xcc2222,0.8,0.1) : mat(0xffffff,0.8,0.1);
+    cyl(1.22, 1.22, 2, 12, bandMat, cx, 8+b*10, cz);
+  }
+});
+
+// === COAL HANDLING PLANT (south-west) ===
+box(40, 6, 14, M.coal, -40, 0, 32,
+  'Coal Handling Plant (CHP)',
+  'Receives coal from Western Coalfields Ltd.<br>Via rail, road & belt conveyors.<br>Crusher house, stacker-reclaimer, bunkers.');
+// Coal bunkers
+for(let i=0;i<5;i++) {
+  box(5,8,5, mat(0x1f4a1f,0.9,0.1), -52+i*7, 0, 38,
+    `Coal Bunker B-${i+1}`,
+    `Day-coal storage bunker.<br>Feeds pulverising mills for each unit.`);
+}
+// Belt conveyor (long diagonal pipe)
+{
+  const pts = [
+    new THREE.Vector3(-20,5,38),
+    new THREE.Vector3(-10,3,20),
+    new THREE.Vector3(0,1,5)
+  ];
+  const curve = new THREE.CatmullRomCurve3(pts);
+  const tubeGeo = new THREE.TubeGeometry(curve,20,0.5,8,false);
+  const tube = new THREE.Mesh(tubeGeo, M.pipe);
+  tube.castShadow = true;
+  tube.userData = {name:'Belt Conveyor', info:'Transfers coal from CHP to bunkers.<br>Enclosed belt conveyor system.'};
+  interactives.push(tube);
+  scene.add(tube);
+}
+
+// === TRANSFORMER / SWITCHYARD (east) ===
+box(35,5,20, M.switchyard, 52, 0, -5,
+  'Switchyard / 220kV GIS',
+  '220 kV Grid interconnection switchyard.<br>Step-up transformers (11kV → 220kV).<br>Power evacuated to MP transmission grid.');
+// Transformers
+for(let i=0;i<6;i++) {
+  box(4,4,3, M.transformer, 40+i*5, 0, -8,
+    `Generator Transformer T-${i+1}`,
+    `Step-up power transformer, unit ${i+8}.<br>Converts generator voltage to 220 kV.`);
+}
+// HV towers (symbolic)
+for(let tx=38;tx<=72;tx+=8) {
+  cyl(0.1,0.1,15,6, mat(0x889aaa,0.7,0.8), tx, 0, 12);
+  cyl(0.1,0.1,15,6, mat(0x889aaa,0.7,0.8), tx, 0, -20);
+}
+
+// === WATER TREATMENT / DEMINERALISATION PLANT ===
+box(20, 4, 12, mat(0x223355,0.8,0.3), -50, 0, -12,
+  'Water Treatment Plant',
+  'Raw water from Satpura Dam Reservoir (2893 acres).<br>Clarification, filtration, DM plant.<br>Provides boiler feed water.');
+// Water pond / reservoir model
+{
+  const pond = new THREE.Mesh(
+    new THREE.BoxGeometry(22,0.4,18),
+    M.water2
+  );
+  pond.position.set(-50, 0.2, -30);
+  pond.userData = {name:'Circulating Water Pond', info:'Cooling water reservoir.<br>Blowdown treatment pond.'};
+  interactives.push(pond);
+  scene.add(pond);
+}
+
+// === ASH HANDLING PLANT (north-east) ===
+box(30, 3, 16, M.ash, 30, 0, 38,
+  'Ash Handling Plant (AHP)',
+  'Collects bottom ash & fly ash from ESPs.<br>Ash is transported to ash dyke (east of plant).<br>Some ash sold to cement manufacturers.');
+// Ash silo
+cyl(4,4,14,16, mat(0x6a4422,0.9,0.1), 50, 0, 36,
+  'Fly Ash Silo',
+  'Stores fly ash collected by ESP.<br>Dry ash dispatched for utilisation.');
+// ESP (Electrostatic Precipitator)
+for(let i=0;i<6;i++) {
+  box(6,8,5, mat(0x444444,0.8,0.5), -30+i*11, 0, -30,
+    `ESP Unit-${i+8}`,
+    `Electrostatic Precipitator.<br>Removes fly ash from flue gas.<br>Efficiency >99.9%`);
+}
+
+// === CONTROL ROOM / ADMIN ===
+box(16, 8, 12, mat(0x1a2a44,0.7,0.3), -50, 0, 12,
+  'Unit Control Room (UCR)',
+  'Central DCS control room.<br>Monitors all boiler-turbine-generator parameters.<br>ABB/Siemens distributed control system.');
+// Windows on control room
+for(let wi=-6;wi<=6;wi+=4) {
+  box(2.5,2.5,0.2, M.window, -50+wi, 4, 18.1);
+}
+
+// === AUXILIARY PLANT ===
+box(12,6,10, mat(0x334455,0.8,0.2), -50, 0, 25,
+  'Auxiliary Plant / DG Room',
+  'Auxiliary power supply.<br>Emergency diesel generators, UPS systems.<br>Start-up transformers.');
+
+// === FUEL OIL (HSD) TANK FARM ===
+for(let i=0;i<3;i++) {
+  cyl(3,3,4,16, mat(0x553333,0.8,0.4), -62+i*8, 0, 22,
+    `HFO/HSD Tank T-${i+1}`,
+    `Heavy Fuel Oil / High Speed Diesel storage.<br>Used for plant start-up and flame stabilisation.`);
+}
+
+// === ROADS ===
+[
+  [0, 0, 0, 5, 100],   // main road N-S
+  [0, 0, 0, 120, 5],   // main road E-W
+  [30,0,0, 5, 80],
+].forEach(([x,y,z,w,d]) => {
+  const r = new THREE.Mesh(new THREE.BoxGeometry(w,0.1,d), M.road);
+  r.position.set(x,0.05,z);
+  r.receiveShadow = true;
+  scene.add(r);
+});
+
+// === BOUNDARY WALL ===
+const wallMat = mat(0x556655, 0.9, 0.1);
+[
+  [-80, 0,   0,  0.5, 4, 160],
+  [ 80, 0,   0,  0.5, 4, 160],
+  [  0, 0, -80, 160,  4, 0.5],
+  [  0, 0,  80, 160,  4, 0.5],
+].forEach(([x,y,z,w,h,d]) => {
+  box(w,h,d, wallMat, x, 0, z);
+});
+
+// === PLANT LABEL ===
+// (Three.js r128 doesn't include FontLoader inline, so we skip 3D text)
+
+// ─── Stars / atmosphere ───────────────────────────────────────────────
+{
+  const starGeo = new THREE.BufferGeometry();
+  const starVerts = [];
+  for(let i=0;i<2000;i++) {
+    starVerts.push(
+      (Math.random()-0.5)*800,
+      50+Math.random()*300,
+      (Math.random()-0.5)*800
+    );
+  }
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts,3));
+  const starMat = new THREE.PointsMaterial({color:0xffffff, size:0.4, sizeAttenuation:true});
+  scene.add(new THREE.Points(starGeo, starMat));
+}
+
+// ─── Orbit Controls (manual) ─────────────────────────────────────────
+let isDragging=false, isRightDrag=false;
+let prevMouse={x:0,y:0};
+let spherical={theta:0.6, phi:1.0, r:130};
+let panTarget={x:0, y:0, z:0};
+
+function updateCamera() {
+  const x = panTarget.x + spherical.r * Math.sin(spherical.phi)*Math.sin(spherical.theta);
+  const y = panTarget.y + spherical.r * Math.cos(spherical.phi);
+  const z = panTarget.z + spherical.r * Math.sin(spherical.phi)*Math.cos(spherical.theta);
+  camera.position.set(x,y,z);
+  camera.lookAt(panTarget.x, panTarget.y, panTarget.z);
+}
+updateCamera();
+
+renderer.domElement.addEventListener('mousedown', e => {
+  isDragging = true;
+  isRightDrag = e.button===2;
+  prevMouse = {x:e.clientX, y:e.clientY};
+});
+window.addEventListener('mouseup', ()=>{ isDragging=false; });
+window.addEventListener('mousemove', e => {
+  if(isDragging) {
+    const dx=(e.clientX-prevMouse.x)*0.005;
+    const dy=(e.clientY-prevMouse.y)*0.005;
+    if(!isRightDrag) {
+      spherical.theta -= dx;
+      spherical.phi = Math.max(0.05, Math.min(Math.PI/2, spherical.phi+dy));
+    } else {
+      const right = new THREE.Vector3();
+      const up = new THREE.Vector3(0,1,0);
+      right.crossVectors(camera.getWorldDirection(new THREE.Vector3()), up).normalize();
+      panTarget.x += right.x*dx*20;
+      panTarget.z += right.z*dx*20;
+      panTarget.y -= dy*20;
+    }
+    prevMouse={x:e.clientX, y:e.clientY};
+    updateCamera();
+  }
+  // Tooltip raycasting
+  handleHover(e);
+});
+renderer.domElement.addEventListener('wheel', e => {
+  spherical.r = Math.max(20, Math.min(280, spherical.r + e.deltaY*0.1));
+  updateCamera();
+});
+renderer.domElement.addEventListener('contextmenu', e=>e.preventDefault());
+window.addEventListener('keydown', e => {
+  if(e.key==='r'||e.key==='R') {
+    spherical={theta:0.6,phi:1.0,r:130};
+    panTarget={x:0,y:0,z:0};
+    updateCamera();
+  }
+});
+
+// ─── Hover / Tooltip ─────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+const ttTitle = document.getElementById('tt-title');
+const ttBody  = document.getElementById('tt-body');
+
+function handleHover(e) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX-rect.left)/rect.width)*2-1;
+  mouse.y = -((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(interactives, true);
+  if(hits.length>0) {
+    let obj = hits[0].object;
+    while(obj && !obj.userData.name) obj=obj.parent;
+    if(obj && obj.userData.name) {
+      tooltip.style.display='block';
+      tooltip.style.left=(e.clientX+14)+'px';
+      tooltip.style.top=(e.clientY-10)+'px';
+      ttTitle.textContent = obj.userData.name;
+      ttBody.innerHTML = obj.userData.info || '';
+      renderer.domElement.style.cursor='pointer';
+      return;
+    }
+  }
+  tooltip.style.display='none';
+  renderer.domElement.style.cursor='default';
+}
+
+// ─── Chimney smoke particles ─────────────────────────────────────────
+const smokeSystems = [];
+chPos.forEach(([cx, cz]) => {
+  const particles = [];
+  for(let i=0;i<30;i++) {
+    const p = new THREE.Mesh(
+      new THREE.SphereGeometry(0.5,6,6),
+      new THREE.MeshBasicMaterial({color:0x888888, transparent:true, opacity:0})
+    );
+    p.position.set(cx + (Math.random()-0.5)*2, Math.random()*40+28, cz+(Math.random()-0.5)*2);
+    p.userData.vel = new THREE.Vector3((Math.random()-0.5)*0.05, 0.15+Math.random()*0.1, (Math.random()-0.5)*0.05);
+    p.userData.age = Math.random()*3;
+    scene.add(p);
+    particles.push(p);
+  }
+  smokeSystems.push(particles);
+});
+
+function updateSmoke(dt) {
+  smokeSystems.forEach(ps => {
+    ps.forEach(p => {
+      p.userData.age += dt;
+      const a = p.userData.age;
+      const lifespan = 4;
+      if(a > lifespan) {
+        const [cx,cz] = chPos[smokeSystems.indexOf(ps)];
+        p.position.set(cx+(Math.random()-0.5)*2, 28, cz+(Math.random()-0.5)*2);
+        p.userData.age = 0;
+      } else {
+        p.position.addScaledVector(p.userData.vel, 1);
+        p.position.x += Math.sin(a*0.5)*0.03;
+        const op = a/lifespan < 0.2 ? (a/lifespan)*5*0.35 : (1-a/lifespan)*0.35;
+        p.material.opacity = op;
+        const s = 1+a*0.8;
+        p.scale.set(s,s,s);
+      }
+    });
+  });
+}
+
+// ─── Cooling tower steam ─────────────────────────────────────────────
+const steamSystems = [];
+ctPositions.forEach(([cx,cz]) => {
+  const ps = [];
+  for(let i=0;i<20;i++) {
+    const p = new THREE.Mesh(
+      new THREE.SphereGeometry(0.8,6,6),
+      new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0})
+    );
+    p.position.set(cx+(Math.random()-0.5)*3, 24+Math.random()*10, cz+(Math.random()-0.5)*3);
+    p.userData.age = Math.random()*3;
+    scene.add(p);
+    ps.push(p);
+  }
+  steamSystems.push(ps);
+});
+
+function updateSteam(dt) {
+  steamSystems.forEach((ps, si) => {
+    const [cx,cz] = ctPositions[si];
+    ps.forEach(p => {
+      p.userData.age = (p.userData.age||0) + dt;
+      const a = p.userData.age, life=3;
+      if(a>life) { p.position.set(cx+(Math.random()-0.5)*3,23,cz+(Math.random()-0.5)*3); p.userData.age=0; return; }
+      p.position.y += 0.12;
+      p.position.x += (Math.random()-0.5)*0.04;
+      const op = a/life<0.3 ? (a/life)/0.3*0.5 : (1-a/life)*0.5;
+      p.material.opacity = op;
+      const s=1+a*0.5; p.scale.set(s,s,s);
+    });
+  });
+}
+
+// ─── Animation Loop ───────────────────────────────────────────────────
+let lastT = 0;
+function animate(t) {
+  requestAnimationFrame(animate);
+  const dt = Math.min((t-lastT)/1000, 0.05);
+  lastT = t;
+  updateSmoke(dt);
+  updateSteam(dt);
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+// ─── Resize ───────────────────────────────────────────────────────────
+window.addEventListener('resize', ()=>{
+  const w=container.clientWidth, h=container.clientHeight;
+  renderer.setSize(w,h);
+  camera.aspect=w/h;
+  camera.updateProjectionMatrix();
+});
+</script>
+</body>
+</html>
