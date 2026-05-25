@@ -1,0 +1,1 @@
+# satpuda-powerplant
